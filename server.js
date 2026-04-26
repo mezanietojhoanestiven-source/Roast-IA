@@ -59,19 +59,48 @@ async function fetchMetadata(username, platform) {
         // ── TIKTOK ───────────────────────────────────────────────────────────
         else if (platform === 'tiktok') {
             profileUrl = `https://www.tiktok.com/@${username}`;
-            const { data } = await axios.get(
-                `https://www.tikwm.com/api/user/info?unique_id=${username}`,
-                { timeout: 6000 }
-            );
 
-            // La API de tikwm devuelve code=0 si encontró el usuario
-            if (data && data.code === 0 && data.data && data.data.user) {
-                image = data.data.user.avatarThumb || data.data.user.avatarMedium || null;
-                description = data.data.user.signature || null;
-                exists = true; // Confirmado
-            } else {
-                // code != 0 o sin user = no existe
-                exists = false;
+            // Intento 1: API de tikwm (más rápida y con más datos)
+            try {
+                const { data } = await axios.get(
+                    `https://www.tikwm.com/api/user/info?unique_id=${username}`,
+                    { timeout: 6000 }
+                );
+
+                if (data && data.code === 0 && data.data && data.data.user) {
+                    image = data.data.user.avatarThumb || data.data.user.avatarMedium || null;
+                    description = data.data.user.signature || null;
+                    exists = true; // Confirmado por tikwm
+                } else {
+                    // tikwm respondió pero dice que el usuario no existe
+                    exists = false;
+                }
+            } catch (tikwmError) {
+                // tikwm falló (timeout, red, etc.) → verificar directamente en TikTok
+                console.log(`tikwm falló para @${username}, verificando en tiktok.com...`);
+                try {
+                    const { status } = await axios.get(profileUrl, {
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36' },
+                        timeout: 7000,
+                        validateStatus: (s) => true
+                    });
+
+                    if (status === 404) {
+                        exists = false; // TikTok confirmó que no existe
+                    } else if (status === 200) {
+                        // La página cargó — el usuario existe aunque no tengamos datos extra
+                        exists = true;
+                        blocked = true; // Sin datos de descripción/imagen
+                    } else {
+                        // Bloqueados por TikTok (redirect, captcha, etc.)
+                        blocked = true;
+                        exists = true;
+                    }
+                } catch (tiktokPageError) {
+                    console.log(`También falló tiktok.com: ${tiktokPageError.message}`);
+                    blocked = true;
+                    exists = true; // En caso de total duda, no bloqueamos
+                }
             }
         }
 
@@ -150,7 +179,20 @@ app.post('/api/analyze', async (req, res) => {
     }
 
     // Prompt estricto con rol de Juez/Auditor de redes sociales
-    const systemPrompt = `Eres el "Juez Cínico de Perfiles", una IA auditora especializada EXCLUSIVAMENTE en analizar perfiles de Instagram, TikTok y YouTube. Tu único propósito es juzgar y criticar perfiles de redes sociales de forma sarcástica y directa. NUNCA pidas disculpas, NUNCA digas que no encuentras información. Su plataforma es ${platform} y su nombre de usuario "@${cleanUsername}".\n${description ? `Biografía real para burlarte: "${description}"` : 'Analiza al usuario basándote en su nombre de usuario.'} \nIMPORTANTE: NO uses asteriscos (**). Escribe solo texto plano. Da una crítica firme de 2 o 3 párrafos y finaliza.\nSi en el chat posterior alguien te habla de CUALQUIER tema que NO sea analizar perfiles de redes sociales, responde SIEMPRE con: "No puedo ayudarte con eso. Soy el Juez Cínico de Perfiles, una auditora de Instagram, TikTok y YouTube. ¿Tienes alguna queja sobre mi veredicto o quieres que analice otro perfil?"`;
+    const systemPrompt = `Eres el "Juez Cínico de Perfiles", una IA auditora especializada EXCLUSIVAMENTE en analizar perfiles de redes sociales.
+
+PERFIL A ANALIZAR:
+- Plataforma: ${platform}
+- Nombre de usuario EXACTO: @${cleanUsername}
+${description ? `- Biografía del perfil: "${description}"` : `- Sin biografía disponible.`}
+
+REGLAS ABSOLUTAS SIN EXCEPCIÓN:
+1. El usuario que estás analizando se llama EXACTAMENTE "@${cleanUsername}". JAMÁS menciones ni inventes otro nombre de usuario diferente.
+2. Lánzate DIRECTAMENTE a la crítica. NO hagas preguntas. NO pidas más información. NO digas que "no tienes acceso" a datos. Ya tienes toda la información que necesitas.
+3. Si no hay biografía, basa tu crítica en el nombre de usuario "${cleanUsername}" — analiza qué dice ese nombre sobre la persona, qué tipo de persona pondría ese nombre, etc. Sé sarcástico y creativo.
+4. NO uses asteriscos (**). Texto plano únicamente.
+5. Escribe exactamente 2 o 3 párrafos de crítica y luego termina.
+6. En el chat posterior, si alguien habla de un tema que NO sea analizar perfiles de redes sociales, responde SIEMPRE: "No puedo ayudarte con eso. Soy el Juez Cínico de Perfiles, una auditora de Instagram, TikTok y YouTube. ¿Tienes alguna queja sobre mi veredicto?"`;
 
     try {
         const completion = await openai.chat.completions.create({
