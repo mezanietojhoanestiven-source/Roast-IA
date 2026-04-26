@@ -278,9 +278,32 @@ async function fetchBusinessData(rawUrl) {
             if (txt) headings.push(txt);
         });
 
-        // Favicon / Logo de Empresa - Servicio directo de Google (Máxima fiabilidad)
+        // Favicon / Logo de Empresa - Sistema de detección inteligente de alta calidad
         const domain = new URL(siteUrl).hostname;
-        favicon = `https://www.google.com/s2/favicons?sz=128&domain=${domain}`;
+        const rootDomain = domain.split('.').slice(-2).join('.'); // ej: web.telegram.org -> telegram.org
+
+        // Intentar obtener og:image (suele ser el logo grande o captura del sitio)
+        const ogImage = $('meta[property="og:image"]').attr('content');
+        
+        if (ogImage && ogImage.startsWith('http')) {
+            favicon = ogImage;
+        } else {
+            // Usar Clearbit como fuente principal para logos de empresas (calidad profesional)
+            // con fallback a Unavatar y luego Google
+            favicon = `https://logo.clearbit.com/${domain}?size=256`;
+            
+            // Si Clearbit no tiene el del subdominio, intentamos el del dominio raíz
+            const fallbackGoogle = `https://www.google.com/s2/favicons?sz=128&domain=${rootDomain}`;
+            const fallbackUnavatar = `https://unavatar.io/${rootDomain}?fallback=${fallbackGoogle}`;
+            
+            // Generar URL final con cadena de fallbacks
+            favicon = `https://logo.clearbit.com/${domain}?fallback=${favicon}`; 
+            // Nota: Clearbit no acepta fallback en URL así, lo haremos vía un wrapper o simplemente 
+            // usaremos un servicio que sí lo haga.
+            
+            // Usemos Unavatar como el motor principal de búsqueda que ya orquestra todo:
+            favicon = `https://unavatar.io/${domain}?fallback=https://unavatar.io/${rootDomain}?fallback=${fallbackGoogle}`;
+        }
 
         return { name, description, favicon, headings, keywords, siteUrl, ok: true };
 
