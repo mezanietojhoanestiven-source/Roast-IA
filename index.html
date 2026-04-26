@@ -614,7 +614,7 @@
             }, 10);
         }
 
-        async function perfomAnalysis(endpoint, body) {
+        async function performAnalysis(endpoint, body) {
             resetUI();
             const loadingInterval = startLoading();
             try {
@@ -635,12 +635,20 @@
                 if (currentMode === 'personal') {
                     roastUser.textContent = body.username.startsWith('@') ? body.username : '@' + body.username;
                     roastPlatform.textContent = `Auditoría IA de ${currentPlatform.charAt(0).toUpperCase() + currentPlatform.slice(1)}`;
-                    if (data.imageUrl) { profileImage.src = data.imageUrl; profileImage.style.display = 'block'; }
+                    if (data.imageUrl) { 
+                        profileImage.crossOrigin = "anonymous";
+                        profileImage.src = data.imageUrl; 
+                        profileImage.style.display = 'block'; 
+                    }
                     typeWriter(data.roast, roastContent);
                 } else {
                     roastUser.textContent = data.name;
                     roastPlatform.textContent = `Auditoría Brutal de Empresa`;
-                    if (data.favicon) { profileImage.src = data.favicon; profileImage.style.display = 'block'; }
+                    if (data.favicon) { 
+                        profileImage.crossOrigin = "anonymous";
+                        profileImage.src = data.favicon; 
+                        profileImage.style.display = 'block'; 
+                    }
                     typeWriter(data.audit, roastContent);
                 }
             } catch (err) {
@@ -653,13 +661,13 @@
         analyzeBtn.addEventListener('click', () => {
             const user = usernameInput.value.trim();
             if (!user) return;
-            perfomAnalysis('/api/analyze', { username: user, platform: currentPlatform });
+            performAnalysis('/api/analyze', { username: user, platform: currentPlatform });
         });
 
         analyzeBizBtn.addEventListener('click', () => {
             const url = bizUrlInput.value.trim();
             if (!url) return;
-            perfomAnalysis('/api/analyze-biz', { url });
+            performAnalysis('/api/analyze-biz', { url });
         });
 
         // --- CHAT ---
@@ -700,7 +708,9 @@
             
             html2canvas(roastCard, {
                 backgroundColor: getComputedStyle(document.body).getPropertyValue('--surface-color'),
-                scale: 2
+                scale: 2,
+                useCORS: true,
+                allowTaint: false
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = `Veredicto_IA_${Date.now()}.png`;
