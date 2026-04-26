@@ -328,6 +328,49 @@
             top: 2rem;
         }
 
+        /* Error Message */
+        #errorSection {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            margin: 1.5rem 0;
+            animation: slideUp 0.3s ease-out forwards;
+        }
+
+        .error-card {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem 2rem;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .error-icon {
+            font-size: 1.8rem;
+            flex-shrink: 0;
+        }
+
+        .error-text {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .error-title {
+            color: #f87171;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .error-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+        }
+
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Media Queries */
@@ -401,6 +444,17 @@
                 <p id="loadingText">Extrayendo datos de la cuenta...</p>
             </div>
 
+            <!-- Error: Cuenta no encontrada -->
+            <div id="errorSection">
+                <div class="error-card">
+                    <span class="error-icon">🔍</span>
+                    <div class="error-text">
+                        <span class="error-title">Cuenta no encontrada</span>
+                        <span class="error-subtitle" id="errorMessage">Por favor, revisa el nombre de usuario e inténtalo de nuevo.</span>
+                    </div>
+                </div>
+            </div>
+
             <div id="resultSection">
                 <div class="roast-card">
                     <div class="profile-header">
@@ -448,6 +502,8 @@
         const usernameInput = document.getElementById('username');
         const loadingSection = document.getElementById('loadingSection');
         const resultSection = document.getElementById('resultSection');
+        const errorSection = document.getElementById('errorSection');
+        const errorMessage = document.getElementById('errorMessage');
         const loadingText = document.getElementById('loadingText');
         const roastContent = document.getElementById('roastContent');
         const roastUser = document.getElementById('roastUser');
@@ -533,6 +589,7 @@
             // Cleanup ui 
             analyzeBtn.style.display = 'none';
             resultSection.style.display = 'none';
+            errorSection.style.display = 'none';
             shareBtn.style.display = 'none';
             if(typeWriterInterval) clearInterval(typeWriterInterval);
             roastContent.innerHTML = '';
@@ -558,9 +615,11 @@
                 clearInterval(loadingInterval);
                 const data = await response.json();
                 
-                if (data.error) {
-                    alert(data.error);
+                if (!response.ok || data.error) {
+                    // Mostrar error visual elegante
                     loadingSection.style.display = 'none';
+                    errorMessage.textContent = data.error || 'Ocurrió un error inesperado. Inténtalo de nuevo.';
+                    errorSection.style.display = 'flex';
                     analyzeBtn.style.display = 'block';
                     return;
                 }

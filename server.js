@@ -87,8 +87,23 @@ app.post('/api/analyze', async (req, res) => {
     // Extraer imagen y descripción con Fallback
     const { image, description, profileUrl } = await fetchMetadata(cleanUsername, platform);
 
-    // Prompt estricto Anti-rechazo
-    const systemPrompt = `Eres el "Juez Cínico de Perfiles", una IA sarcástica y destructiva. Vas a analizar a este usuario y a criticarlo fuertemente. NUNCA pidas disculpas, NUNCA digas que no encuentras información y NUNCA pidas contexto. Si no conoces al usuario o su contenido, INVÉNTASELO de forma sarcástica a partir de su nombre de usuario como si ya supieras quién es. Su plataforma es ${platform} y su nombre de usuario "@${cleanUsername}".\n${description ? `Biografía real para burlarte: "${description}"` : 'Finge que conoces absolutamente todo sobre esta persona y lánzate directo a la crítica.'} \nIMPORTANTE: NO uses asteriscos (**). Escribe solo texto plano. Da una crítica firme de 2 o 3 párrafos y finaliza.`;
+    // Si no hay descripción NI imagen real (no de unavatar), la cuenta no existe
+    // Para YouTube e Instagram usamos unavatar como fallback, así que debemos verificar
+    // solo si la API real devolvió datos (description es el indicador clave)
+    const hasRealData = description !== null && description !== undefined;
+    const isUnavatarFallback = image && image.includes('unavatar.io');
+
+    // Si no hay ningún dato real (sin descripción y sin imagen directa de la plataforma),
+    // consideramos que la cuenta no fue encontrada
+    if (!hasRealData && (platform === 'tiktok' || isUnavatarFallback || !image)) {
+        console.log(`Cuenta no encontrada: ${platform} @${cleanUsername}`);
+        return res.status(404).json({
+            error: '❌ No se encontró esa cuenta. Por favor, revisa el nombre e inténtalo de nuevo.'
+        });
+    }
+
+    // Prompt estricto con rol de Juez/Auditor de redes sociales
+    const systemPrompt = `Eres el "Juez Cínico de Perfiles", una IA auditora especializada EXCLUSIVAMENTE en analizar perfiles de Instagram, TikTok y YouTube. Tu único propósito es juzgar y criticar perfiles de redes sociales de forma sarcástica y directa. NUNCA pidas disculpas, NUNCA digas que no encuentras información. Su plataforma es ${platform} y su nombre de usuario "@${cleanUsername}".\n${description ? `Biografía real para burlarte: "${description}"` : 'Analiza al usuario basándote en su nombre de usuario.'} \nIMPORTANTE: NO uses asteriscos (**). Escribe solo texto plano. Da una crítica firme de 2 o 3 párrafos y finaliza.\nSi en el chat posterior alguien te habla de CUALQUIER tema que NO sea analizar perfiles de redes sociales, responde SIEMPRE con: "No puedo ayudarte con eso. Soy el Juez Cínico de Perfiles, una auditora de Instagram, TikTok y YouTube. ¿Tienes alguna queja sobre mi veredicto o quieres que analice otro perfil?"`;
 
     try {
         const completion = await openai.chat.completions.create({
@@ -123,9 +138,19 @@ app.post('/api/chat', async (req, res) => {
         return res.status(400).json({ error: 'Formato de mensajes inválido.' });
     }
 
+    // Reforzar el rol del Juez en cada mensaje del chat para evitar desvíos de tema
+    const reinforcedMessages = messages.map((msg, index) => {
+        if (index === 0 && msg.role === 'system') {
+            // Asegurarse de que el system prompt siempre tenga la restricción de tema
+            const restriction = `\n\nREGLA ABSOLUTA E INQUEBRANTABLE: Solo puedes hablar sobre análisis de perfiles de redes sociales (Instagram, TikTok, YouTube). Si el usuario habla de CUALQUIER otro tema (política, comida, tecnología, filosofía, código, etc.), DEBES responder EXACTAMENTE con: "No puedo ayudarte con eso. Soy el Juez Cínico de Perfiles, una auditora especializada en Instagram, TikTok y YouTube. ¿Tienes alguna queja sobre mi veredicto o quieres analizar otro perfil?" Sin excepciones.`;
+            return { ...msg, content: msg.content + restriction };
+        }
+        return msg;
+    });
+
     try {
         const completion = await openai.chat.completions.create({
-            messages: messages,
+            messages: reinforcedMessages,
             model: 'llama-3.1-8b-instant',
             max_tokens: 3000,
             temperature: 0.8
