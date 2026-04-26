@@ -164,37 +164,62 @@ async function fetchMetadata(username, platform) {
                 exists = false;
 
             } else {
-                // API bloqueada (401/403/429) → verificar existencia con HEAD request
-                // Instagram devuelve 200 para perfiles reales y 404 para inexistentes
-                // incluso desde IPs de servidor, en la mayoría de los casos
-                console.log(`Instagram API bloqueada (HTTP ${igApiResp.status}), verificando con HEAD...`);
+                // API bloqueada (401/403/429) → parsear la página pública de Instagram
+                // Instagram sirve og:title server-side (para SEO) sin necesitar JavaScript:
+                //   - Usuario real:       "Nombre (@handle) • Instagram photos and videos"
+                //   - Usuario inexistente: "Instagram" (genérico) o sin og:title
+                console.log(`Instagram API bloqueada (HTTP ${igApiResp.status}), leyendo página pública...`);
 
                 try {
-                    const headResp = await axios.head(profileUrl, {
+                    const pageResp = await axios.get(profileUrl, {
                         headers: {
                             'User-Agent': browserUA,
+                            'Accept': 'text/html,application/xhtml+xml',
                             'Accept-Language': 'es-ES,es;q=0.9'
                         },
-                        timeout: 6000,
+                        timeout: 8000,
                         validateStatus: () => true,
-                        maxRedirects: 3
+                        maxRedirects: 5
                     });
 
-                    if (headResp.status === 404) {
-                        // Instagram confirmó que el usuario no existe mediante HEAD
+                    if (pageResp.status === 404) {
                         exists = false;
-                    } else if (headResp.status === 200 || headResp.status === 302) {
-                        // El perfil existe, aunque no pudimos obtener los datos
-                        exists  = true;
-                        blocked = true;
-                        // Intentar obtener imagen de unavatar como fallback visual
+                    } else if (pageResp.status === 200) {
+                        const $ig = cheerio.load(pageResp.data);
+                        const ogTitle = ($ig('meta[property="og:title"]').attr('content') || '').trim();
+                        const ogImage = ($ig('meta[property="og:image"]').attr('content') || '').trim();
+
+                        // Señales de que la página es "no disponible"
+                        const bodyText  = pageResp.data || '';
+                        const notFound  = bodyText.includes("Sorry, this page") ||
+                                          bodyText.includes("isn't available")   ||
+                                          bodyText.includes("no está disponible");
+
+                        // og:title para usuario real incluye el @ y la palabra "Instagram"
+                        // Ej: "Cristiano Ronaldo (@cristiano) • Fotos y vídeos de Instagram"
+                        // og:title para inexistente: "Instagram" o vacío
+                        const titleHasUser = ogTitle.toLowerCase().includes(username.toLowerCase()) ||
+                                             (ogTitle !== '' && ogTitle.toLowerCase() !== 'instagram');
+
+                        if (notFound || (!titleHasUser && !ogImage)) {
+                            exists = false;
+                        } else if (titleHasUser) {
+                            exists = true;
+                            blocked = true; // sin stats, pero confirmamos que existe
+                            // Intentar obtener imagen del og:image de la página
+                            if (ogImage) image = ogImage;
+                        } else {
+                            // Caso ambiguo (Instagram bloqueó totalmente el contenido)
+                            blocked = true;
+                            exists  = true;
+                        }
                     } else {
-                        // Status raro (500, etc.) → en duda, dejamos pasar
+                        // Otro status (5xx, etc.) → en duda, dejamos pasar
                         blocked = true;
                         exists  = true;
                     }
-                } catch (headErr) {
-                    console.log(`HEAD también falló: ${headErr.message}`);
+                } catch (pageErr) {
+                    console.log(`Página pública de Instagram falló: ${pageErr.message}`);
                     blocked = true;
                     exists  = true;
                 }
