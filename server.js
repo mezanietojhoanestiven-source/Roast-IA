@@ -278,16 +278,29 @@ async function fetchBusinessData(rawUrl) {
             if (txt) headings.push(txt);
         });
 
-        // Favicon
+        // Favicon / Logo de Empresa - Estrategia Multi-nivel para que NUNCA falle
+        const domain = new URL(siteUrl).hostname;
         const origin = new URL(siteUrl).origin;
+
+        // 1. Intentar obtenerlo del HTML (Scraping directo)
         const faviconHref = $('link[rel="icon"]').attr('href') ||
                             $('link[rel="shortcut icon"]').attr('href') ||
                             $('link[rel="apple-touch-icon"]').attr('href') ||
-                            '/favicon.ico';
+                            $('meta[property="og:image"]').attr('content') || // A veces el logo está aquí
+                            null;
 
-        favicon = faviconHref.startsWith('http')
-            ? faviconHref
-            : origin + (faviconHref.startsWith('/') ? faviconHref : '/' + faviconHref);
+        if (faviconHref) {
+            favicon = faviconHref.startsWith('http')
+                ? faviconHref
+                : origin + (faviconHref.startsWith('/') ? faviconHref : '/' + faviconHref);
+        } else {
+            // 2. Fallback con Unavatar (Muy potente, busca en redes sociales y DNS)
+            favicon = `https://unavatar.io/${domain}?fallback=https://www.google.com/s2/favicons?sz=128&domain=${domain}`;
+        }
+
+        // Si por alguna razón el scrape dio un /favicon.ico genérico o falló, reforzamos con Unavatar como fuente principal
+        // Unavatar suele dar logos de mayor calidad que un simple favicon de 16x16
+        favicon = `https://unavatar.io/${domain}?fallback=${favicon || `https://www.google.com/s2/favicons?sz=128&domain=${domain}`}`;
 
         return { name, description, favicon, headings, keywords, siteUrl, ok: true };
 
