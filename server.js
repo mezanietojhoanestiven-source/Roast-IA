@@ -18,57 +18,110 @@ const openai = new OpenAI({
     apiKey: process.env.GROQ_API_KEY
 });
 
-// Función auxiliar para obtener metadata y asegurar la foto
-// Función auxiliar para obtener metadata de forma robusta
+// Función auxiliar: intenta obtener metadata Y determina si la cuenta existe
+// Retorna: { image, description, profileUrl, exists, blocked }
+// - exists: true = cuenta confirmada, false = cuenta NO existe (404 real)
+// - blocked: true = la plataforma nos bloqueó (no podemos confirmar existencia)
 async function fetchMetadata(username, platform) {
     let image = null;
     let description = null;
     let profileUrl = '';
+    let exists = false;   // por defecto asumimos que no existe hasta confirmarlo
+    let blocked = false;  // indica que la plataforma nos bloqueó (no es 404)
 
     try {
+        // ── YOUTUBE ──────────────────────────────────────────────────────────
         if (platform === 'youtube') {
             profileUrl = `https://www.youtube.com/@${username}`;
-            const { data } = await axios.get(profileUrl, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-                timeout: 4000
+            // Un canal inexistente devuelve HTTP 404; uno existente devuelve 200
+            const { data, status } = await axios.get(profileUrl, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36' },
+                timeout: 6000,
+                validateStatus: (s) => true // No lanzar error, capturar el status
             });
-            const $ = cheerio.load(data);
-            image = $('meta[property="og:image"]').attr('content');
-            description = $('meta[property="og:description"]').attr('content');
-        } 
-        else if (platform === 'tiktok') {
-            profileUrl = `https://www.tiktok.com/@${username}`;
-            const { data } = await axios.get(`https://www.tikwm.com/api/user/info?unique_id=${username}`, { timeout: 4000 });
-            if (data && data.data && data.data.user) {
-                image = data.data.user.avatarThumb || data.data.user.avatarMedium;
-                description = data.data.user.signature;
-            }
-        } 
-        else if (platform === 'instagram') {
-            profileUrl = `https://www.instagram.com/${username}/`;
-            const { data } = await axios.get(`https://i.instagram.com/api/v1/users/web_profile_info/?username=${username}`, {
-                headers: { 'X-IG-App-ID': '936619743392459' },
-                timeout: 4000
-            });
-            if (data && data.data && data.data.user) {
-                image = data.data.user.profile_pic_url_hd || data.data.user.profile_pic_url;
-                description = data.data.user.biography;
+
+            if (status === 404) {
+                // Canal inexistente confirmado
+                exists = false;
+            } else if (status === 200) {
+                const $ = cheerio.load(data);
+                image = $('meta[property="og:image"]').attr('content') || null;
+                description = $('meta[property="og:description"]').attr('content') || null;
+                // YouTube siempre tiene og:image si el canal existe
+                exists = !!image;
+            } else {
+                // Bloqueado (429, 503, etc.) — no podemos confirmar, asumimos que existe
+                blocked = true;
+                exists = true;
             }
         }
+
+        // ── TIKTOK ───────────────────────────────────────────────────────────
+        else if (platform === 'tiktok') {
+            profileUrl = `https://www.tiktok.com/@${username}`;
+            const { data } = await axios.get(
+                `https://www.tikwm.com/api/user/info?unique_id=${username}`,
+                { timeout: 6000 }
+            );
+
+            // La API de tikwm devuelve code=0 si encontró el usuario
+            if (data && data.code === 0 && data.data && data.data.user) {
+                image = data.data.user.avatarThumb || data.data.user.avatarMedium || null;
+                description = data.data.user.signature || null;
+                exists = true; // Confirmado
+            } else {
+                // code != 0 o sin user = no existe
+                exists = false;
+            }
+        }
+
+        // ── INSTAGRAM ────────────────────────────────────────────────────────
+        else if (platform === 'instagram') {
+            profileUrl = `https://www.instagram.com/${username}/`;
+            const { data, status } = await axios.get(
+                `https://i.instagram.com/api/v1/users/web_profile_info/?username=${username}`,
+                {
+                    headers: {
+                        'X-IG-App-ID': '936619743392459',
+                        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)',
+                        'Accept': 'application/json'
+                    },
+                    timeout: 6000,
+                    validateStatus: (s) => true // Capturar todos los status
+                }
+            );
+
+            if (status === 200 && data && data.data && data.data.user) {
+                // Usuario encontrado y la API respondió con datos
+                image = data.data.user.profile_pic_url_hd || data.data.user.profile_pic_url || null;
+                description = data.data.user.biography || null;
+                exists = true; // Confirmado
+            } else if (status === 404) {
+                // La API devuelve 404 explícito cuando el username no existe
+                exists = false;
+            } else {
+                // 401 / 403 / 429 = Instagram nos bloqueó, pero el usuario PUEDE existir
+                // En este caso, asumimos que existe para no dar falsos negativos
+                console.log(`Instagram bloqueó la solicitud (HTTP ${status}), asumiendo que existe.`);
+                blocked = true;
+                exists = true;
+            }
+        }
+
     } catch (error) {
-        console.log(`Fallo API/Scraping para ${platform} ${username}: ${error.message}`);
+        // Error de red (timeout, ECONNREFUSED, etc.) — no podemos confirmar
+        console.log(`Error de red para ${platform}/@${username}: ${error.message}`);
+        blocked = true;
+        exists = true; // En caso de duda, no bloqueamos al usuario
     }
 
-    // Si no se encuentra, usamos unavatar.io como esfuerzo final,
-    // que podría devolver la imagen buscada de otras fuentes.
-    if (!image) {
-        if (platform === 'youtube') image = `https://unavatar.io/youtube/${username}`;
-        else if (platform === 'instagram') image = `https://unavatar.io/instagram/${username}`;
-        // Para tiktok preferiblemente devolver null si falló nuestra API
-        else image = null;
+    // Fallback de imagen solo si la cuenta existe pero no obtuvimos foto
+    if (exists && !image) {
+        if (platform === 'youtube')   image = `https://unavatar.io/youtube/${username}`;
+        if (platform === 'instagram') image = `https://unavatar.io/instagram/${username}`;
     }
 
-    return { image, description, profileUrl };
+    return { image, description, profileUrl, exists, blocked };
 }
 
 // Ruta principal para el análisis
@@ -84,19 +137,13 @@ app.post('/api/analyze', async (req, res) => {
 
     console.log(`Analizando ${platform}: ${cleanUsername}`);
 
-    // Extraer imagen y descripción con Fallback
-    const { image, description, profileUrl } = await fetchMetadata(cleanUsername, platform);
+    // Extraer imagen, descripción y flag de existencia
+    const { image, description, profileUrl, exists, blocked } = await fetchMetadata(cleanUsername, platform);
 
-    // Si no hay descripción NI imagen real (no de unavatar), la cuenta no existe
-    // Para YouTube e Instagram usamos unavatar como fallback, así que debemos verificar
-    // solo si la API real devolvió datos (description es el indicador clave)
-    const hasRealData = description !== null && description !== undefined;
-    const isUnavatarFallback = image && image.includes('unavatar.io');
-
-    // Si no hay ningún dato real (sin descripción y sin imagen directa de la plataforma),
-    // consideramos que la cuenta no fue encontrada
-    if (!hasRealData && (platform === 'tiktok' || isUnavatarFallback || !image)) {
-        console.log(`Cuenta no encontrada: ${platform} @${cleanUsername}`);
+    // Si la plataforma confirmó con certeza que el usuario NO existe → 404
+    // Si "blocked" es true, pasamos de largo (no sabemos con certeza si existe o no)
+    if (!exists && !blocked) {
+        console.log(`Cuenta no encontrada (confirmado): ${platform} @${cleanUsername}`);
         return res.status(404).json({
             error: '❌ No se encontró esa cuenta. Por favor, revisa el nombre e inténtalo de nuevo.'
         });
