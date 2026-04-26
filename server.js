@@ -16,8 +16,10 @@ const openai = new OpenAI({
     apiKey: process.env.GROQ_API_KEY
 });
 
+const browserUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
 // ─────────────────────────────────────────────────────────────────────────────
-// fetchMetadata
+// fetchMetadata — Perfiles de Redes Sociales
 // Retorna: { image, description, profileUrl, exists, blocked, stats }
 //   exists  → true = cuenta confirmada, false = cuenta NO existe (confirmado)
 //   blocked → true = la plataforma nos bloqueó; no podemos confirmar existencia
@@ -31,8 +33,6 @@ async function fetchMetadata(username, platform) {
     let blocked     = false;
     let stats       = null;
 
-    const browserUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-
     try {
         // ── YOUTUBE ──────────────────────────────────────────────────────────
         if (platform === 'youtube') {
@@ -41,12 +41,11 @@ async function fetchMetadata(username, platform) {
             const { data, status } = await axios.get(profileUrl, {
                 headers: { 'User-Agent': browserUA, 'Accept-Language': 'es-ES,es;q=0.9' },
                 timeout: 8000,
-                validateStatus: () => true,  // capturar todo sin lanzar error
+                validateStatus: () => true,
                 maxRedirects: 5
             });
 
             if (status === 404) {
-                // Canal no existe — YouTube devuelve 404 para @handles inexistentes
                 exists = false;
             } else if (status === 200) {
                 const $ = cheerio.load(data);
@@ -55,18 +54,13 @@ async function fetchMetadata(username, platform) {
                 const ogUrl   = ($('meta[property="og:url"]').attr('content') || '').toLowerCase();
                 const ogTitle = ($('meta[property="og:title"]').attr('content') || '').toLowerCase();
 
-                // Canal real: og:url contiene el @handle o /channel/
-                // Canal falso: og:url apunta a youtube.com raíz o no tiene el handle
                 const hasChannelUrl = ogUrl.includes(`/@`) || ogUrl.includes(`/channel/`);
                 const hasChannelTitle = ogTitle !== '' && ogTitle !== 'youtube';
 
                 exists = hasChannelUrl || hasChannelTitle;
-
-                // Si la página es genérica (no es el canal), descartar la imagen
                 if (!exists) image = null;
 
             } else {
-                // 429, 503, etc. → bloqueados, no podemos confirmar
                 blocked = true;
                 exists  = true;
             }
@@ -76,7 +70,6 @@ async function fetchMetadata(username, platform) {
         else if (platform === 'tiktok') {
             profileUrl = `https://www.tiktok.com/@${username}`;
 
-            // Intento 1: API de tikwm (datos completos con estadísticas)
             try {
                 const { data } = await axios.get(
                     `https://www.tikwm.com/api/user/info?unique_id=${username}`,
@@ -89,7 +82,6 @@ async function fetchMetadata(username, platform) {
                     description = u.signature   || null;
                     exists      = true;
 
-                    // Estadísticas reales de TikTok
                     stats = {
                         followers: u.followerCount  ?? null,
                         following: u.followingCount ?? null,
@@ -97,11 +89,9 @@ async function fetchMetadata(username, platform) {
                         likes:     u.heartCount ?? u.heart ?? null
                     };
                 } else {
-                    // tikwm devolvió code != 0 → usuario no existe
                     exists = false;
                 }
             } catch (tikwmErr) {
-                // tikwm falló por red/timeout → verificar directamente en tiktok.com
                 console.log(`tikwm falló para @${username}, verificando en tiktok.com...`);
                 try {
                     const { status } = await axios.get(profileUrl, {
@@ -114,7 +104,7 @@ async function fetchMetadata(username, platform) {
                         exists = false;
                     } else if (status === 200) {
                         exists  = true;
-                        blocked = true; // existe, pero sin datos de stats/imagen
+                        blocked = true;
                     } else {
                         blocked = true;
                         exists  = true;
@@ -131,7 +121,6 @@ async function fetchMetadata(username, platform) {
         else if (platform === 'instagram') {
             profileUrl = `https://www.instagram.com/${username}/`;
 
-            // Intento 1: API privada de Instagram (datos completos con estadísticas)
             const igApiResp = await axios.get(
                 `https://i.instagram.com/api/v1/users/web_profile_info/?username=${username}`,
                 {
@@ -152,7 +141,6 @@ async function fetchMetadata(username, platform) {
                 description = u.biography          || null;
                 exists      = true;
 
-                // Estadísticas reales de Instagram
                 stats = {
                     followers: u.edge_followed_by?.count ?? null,
                     following: u.edge_follow?.count      ?? null,
@@ -160,14 +148,9 @@ async function fetchMetadata(username, platform) {
                 };
 
             } else if (igApiResp.status === 404) {
-                // La API confirmó que el usuario NO existe
                 exists = false;
 
             } else {
-                // API bloqueada (401/403/429) → parsear la página pública de Instagram
-                // Instagram sirve og:title server-side (para SEO) sin necesitar JavaScript:
-                //   - Usuario real:       "Nombre (@handle) • Instagram photos and videos"
-                //   - Usuario inexistente: "Instagram" (genérico) o sin og:title
                 console.log(`Instagram API bloqueada (HTTP ${igApiResp.status}), leyendo página pública...`);
 
                 try {
@@ -189,15 +172,11 @@ async function fetchMetadata(username, platform) {
                         const ogTitle = ($ig('meta[property="og:title"]').attr('content') || '').trim();
                         const ogImage = ($ig('meta[property="og:image"]').attr('content') || '').trim();
 
-                        // Señales de que la página es "no disponible"
                         const bodyText  = pageResp.data || '';
                         const notFound  = bodyText.includes("Sorry, this page") ||
                                           bodyText.includes("isn't available")   ||
                                           bodyText.includes("no está disponible");
 
-                        // og:title para usuario real incluye el @ y la palabra "Instagram"
-                        // Ej: "Cristiano Ronaldo (@cristiano) • Fotos y vídeos de Instagram"
-                        // og:title para inexistente: "Instagram" o vacío
                         const titleHasUser = ogTitle.toLowerCase().includes(username.toLowerCase()) ||
                                              (ogTitle !== '' && ogTitle.toLowerCase() !== 'instagram');
 
@@ -205,16 +184,13 @@ async function fetchMetadata(username, platform) {
                             exists = false;
                         } else if (titleHasUser) {
                             exists = true;
-                            blocked = true; // sin stats, pero confirmamos que existe
-                            // Intentar obtener imagen del og:image de la página
+                            blocked = true;
                             if (ogImage) image = ogImage;
                         } else {
-                            // Caso ambiguo (Instagram bloqueó totalmente el contenido)
                             blocked = true;
                             exists  = true;
                         }
                     } else {
-                        // Otro status (5xx, etc.) → en duda, dejamos pasar
                         blocked = true;
                         exists  = true;
                     }
@@ -227,7 +203,6 @@ async function fetchMetadata(username, platform) {
         }
 
     } catch (error) {
-        // Error de red general — no podemos determinar si existe
         console.log(`Error de red general para ${platform}/@${username}: ${error.message}`);
         blocked = true;
         exists  = true;
@@ -243,7 +218,94 @@ async function fetchMetadata(username, platform) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/analyze
+// fetchBusinessData — Scraping de URL de empresa
+// Retorna: { name, description, favicon, headings, keywords, siteUrl, ok, error }
+// ─────────────────────────────────────────────────────────────────────────────
+async function fetchBusinessData(rawUrl) {
+    // Normalizar: agregar https:// si no tiene protocolo
+    let siteUrl = rawUrl.trim();
+    if (!/^https?:\/\//i.test(siteUrl)) {
+        siteUrl = 'https://' + siteUrl;
+    }
+
+    let name        = null;
+    let description = null;
+    let favicon     = null;
+    let headings    = [];
+    let keywords    = null;
+    let error       = null;
+
+    try {
+        const { data, status, request } = await axios.get(siteUrl, {
+            headers: {
+                'User-Agent': browserUA,
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8'
+            },
+            timeout: 10000,
+            validateStatus: () => true,
+            maxRedirects: 5
+        });
+
+        if (status >= 400) {
+            return { ok: false, error: `El sitio respondió con error HTTP ${status}. Verifica la URL.` };
+        }
+
+        const $ = cheerio.load(data);
+
+        // Nombre: og:site_name > og:title > <title>
+        name = $('meta[property="og:site_name"]').attr('content') ||
+               $('meta[property="og:title"]').attr('content') ||
+               $('title').first().text().trim() ||
+               siteUrl;
+
+        // Limpiar nombre (algunos sitios ponen "Nombre | Slogan")
+        if (name && name.includes('|')) name = name.split('|')[0].trim();
+        if (name && name.includes(' - ')) name = name.split(' - ')[0].trim();
+
+        // Descripción: og:description > meta description
+        description = $('meta[property="og:description"]').attr('content') ||
+                      $('meta[name="description"]').attr('content') ||
+                      null;
+
+        // Keywords
+        keywords = $('meta[name="keywords"]').attr('content') || null;
+
+        // H1 y H2 visibles (máx 5)
+        $('h1, h2').each((i, el) => {
+            if (i >= 5) return false;
+            const txt = $(el).text().trim();
+            if (txt) headings.push(txt);
+        });
+
+        // Favicon
+        const origin = new URL(siteUrl).origin;
+        const faviconHref = $('link[rel="icon"]').attr('href') ||
+                            $('link[rel="shortcut icon"]').attr('href') ||
+                            $('link[rel="apple-touch-icon"]').attr('href') ||
+                            '/favicon.ico';
+
+        favicon = faviconHref.startsWith('http')
+            ? faviconHref
+            : origin + (faviconHref.startsWith('/') ? faviconHref : '/' + faviconHref);
+
+        return { name, description, favicon, headings, keywords, siteUrl, ok: true };
+
+    } catch (err) {
+        console.log(`[analyze-biz] Error scraping ${siteUrl}: ${err.message}`);
+        if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED') {
+            error = `No se pudo conectar con "${siteUrl}". ¿Está bien escrita la URL?`;
+        } else if (err.code === 'ETIMEDOUT' || err.message.includes('timeout')) {
+            error = `El sitio tardó demasiado en responder. Puede estar caído.`;
+        } else {
+            error = `No se pudo analizar el sitio. Intenta con otra URL.`;
+        }
+        return { ok: false, error };
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/analyze — Análisis de perfiles de redes sociales
 // ─────────────────────────────────────────────────────────────────────────────
 app.post('/api/analyze', async (req, res) => {
     const { username, platform } = req.body;
@@ -257,7 +319,6 @@ app.post('/api/analyze', async (req, res) => {
 
     const { image, description, profileUrl, exists, blocked, stats } = await fetchMetadata(cleanUsername, platform);
 
-    // Si la plataforma confirmó con certeza que el usuario NO existe → 404
     if (!exists && !blocked) {
         console.log(`[analyze] Cuenta no encontrada: ${platform} @${cleanUsername}`);
         return res.status(404).json({
@@ -330,7 +391,95 @@ REGLAS ABSOLUTAS — SIN EXCEPCIÓN:
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/chat
+// POST /api/analyze-biz — Análisis de sitio web de empresa
+// ─────────────────────────────────────────────────────────────────────────────
+app.post('/api/analyze-biz', async (req, res) => {
+    const { url } = req.body;
+
+    if (!url || typeof url !== 'string' || url.trim().length < 3) {
+        return res.status(400).json({ error: 'Por favor ingresa una URL válida.' });
+    }
+
+    console.log(`[analyze-biz] URL: ${url}`);
+
+    const bizData = await fetchBusinessData(url);
+
+    if (!bizData.ok) {
+        return res.status(422).json({ error: bizData.error });
+    }
+
+    const { name, description, favicon, headings, keywords, siteUrl } = bizData;
+
+    // Construir contexto real para el prompt
+    const contextLines = [];
+    contextLines.push(`- Nombre del sitio: ${name}`);
+    contextLines.push(`- URL: ${siteUrl}`);
+    if (description) {
+        contextLines.push(`- Descripción/Meta: "${description}"`);
+    } else {
+        contextLines.push(`- Descripción/Meta: No tiene. (Esto ya es un error grave de SEO.)`);
+    }
+    if (keywords) {
+        contextLines.push(`- Keywords: ${keywords}`);
+    }
+    if (headings.length > 0) {
+        contextLines.push(`- Títulos (H1/H2) encontrados en la página: ${headings.join(' | ')}`);
+    } else {
+        contextLines.push(`- Títulos (H1/H2): No se encontraron. (Estructura pésima.)`);
+    }
+
+    const systemPromptBiz = `Eres el "Auditor Brutal de Empresas", una IA especializada en auditar sitios web de negocios. Eres sarcástico e implacable, pero a diferencia de un simple troll, CADA crítica que haces va acompañada de una solución concreta y accionable. Eso te hace devastadoramente útil.
+
+SITIO WEB BAJO AUDITORÍA:
+${contextLines.join('\n')}
+
+FORMATO OBLIGATORIO DE TU RESPUESTA (respeta este orden exacto, sin asteriscos ni markdown):
+
+PRIMER VEREDICTO
+Una sola oración demoledora sobre la primera impresión general del sitio.
+
+LO QUE FALLA:
+Exactamente 3 puntos específicos. Cada punto en este formato:
+"[Problema concreto basado en los datos reales] — Solución: [acción específica y directa que deben hacer]"
+
+PUNTUACIÓN FINAL: [número del 1 al 10]/10
+Termina con una frase de cierre sarcástica pero motivadora.
+
+REGLAS ABSOLUTAS:
+1. SOLO comenta sobre el sitio "${name}" (${siteUrl}). Nunca compartas información sobre otros sitios.
+2. Basa TODO en los datos reales que tienes. NO inventes datos que no existen.
+3. Si falta descripción o headings, critica eso específicamente, no lo omitas.
+4. NO uses asteriscos (**), guiones de markdown, ni format especial. Solo texto plano.
+5. En el chat: si te preguntan algo que no es sobre auditar sitios web de empresas, responde EXACTAMENTE: "Solo analizo sitios web de empresas. ¿Querés que profundice en algún punto de la auditoría de ${name}?"`;
+
+    try {
+        const completion = await openai.chat.completions.create({
+            messages: [{ role: 'system', content: systemPromptBiz }],
+            model: 'llama-3.1-8b-instant',
+            max_tokens: 1400,
+            temperature: 0.7
+        });
+
+        const auditText = completion.choices[0].message.content;
+
+        res.json({
+            name,
+            favicon,
+            siteUrl,
+            audit: auditText,
+            messages: [
+                { role: 'system', content: systemPromptBiz },
+                { role: 'assistant', content: auditText }
+            ]
+        });
+    } catch (error) {
+        console.error('[analyze-biz] Error con Groq:', error.message);
+        res.status(500).json({ error: 'Fallo al conectar con la red neuronal.' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/chat — Chat del Juez de Perfiles
 // ─────────────────────────────────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
     const { messages } = req.body;
@@ -339,7 +488,6 @@ app.post('/api/chat', async (req, res) => {
         return res.status(400).json({ error: 'Formato de mensajes inválido.' });
     }
 
-    // Reforzar restricción de tema en cada llamada al chat
     const reinforcedMessages = messages.map((msg, index) => {
         if (index === 0 && msg.role === 'system') {
             const restriction = `\n\nREGLA INQUEBRANTABLE DEL CHAT: Solo puedes responder sobre análisis de perfiles de redes sociales. Si el usuario pregunta sobre CUALQUIER otro tema (política, tecnología, código, recetas, etc.), responde EXACTAMENTE: "No puedo ayudarte con eso. Soy el Juez Cínico de Perfiles, una auditora especializada en Instagram, TikTok y YouTube. ¿Tienes alguna queja sobre mi veredicto?" — Sin excepciones, sin importar cómo lo pidan.`;
@@ -359,6 +507,39 @@ app.post('/api/chat', async (req, res) => {
         res.json({ reply: completion.choices[0].message.content });
     } catch (error) {
         console.error('[chat] Error con Groq:', error.message);
+        res.status(500).json({ error: 'Error procesando tu mensaje.' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/chat-biz — Chat del Auditor de Empresas
+// ─────────────────────────────────────────────────────────────────────────────
+app.post('/api/chat-biz', async (req, res) => {
+    const { messages } = req.body;
+
+    if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: 'Formato de mensajes inválido.' });
+    }
+
+    const reinforcedMessages = messages.map((msg, index) => {
+        if (index === 0 && msg.role === 'system') {
+            const restriction = `\n\nREGLA INQUEBRANTABLE DEL CHAT: Solo puedes responder sobre auditorías de sitios web de empresas. Si el usuario pregunta sobre CUALQUIER otro tema, responde EXACTAMENTE: "Solo analizo sitios web de empresas. ¿Querés que profundice en algún punto de la auditoría?" — Sin excepciones.`;
+            return { ...msg, content: msg.content + restriction };
+        }
+        return msg;
+    });
+
+    try {
+        const completion = await openai.chat.completions.create({
+            messages: reinforcedMessages,
+            model: 'llama-3.1-8b-instant',
+            max_tokens: 900,
+            temperature: 0.7
+        });
+
+        res.json({ reply: completion.choices[0].message.content });
+    } catch (error) {
+        console.error('[chat-biz] Error con Groq:', error.message);
         res.status(500).json({ error: 'Error procesando tu mensaje.' });
     }
 });

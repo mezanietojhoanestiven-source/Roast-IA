@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análisis de Perfiles IA</title>
+    <title>Juez IA — Auditoría Brutal</title>
 
+    <!-- html2canvas para guardar como imagen -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
     <!-- Código principal de Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7566072282016933" crossorigin="anonymous"></script>
 
@@ -51,15 +54,15 @@
             background-color: var(--bg-color);
             color: var(--text-primary);
             min-height: 100vh;
-            min-height: 100dvh; /* Dynamic viewport for mobile browsers */
+            min-height: 100dvh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* Mobile: minimal horizontal padding */
             padding: 0 1rem 2rem;
             padding-bottom: calc(2rem + env(safe-area-inset-bottom));
             position: relative;
             overflow-x: hidden;
+            transition: background-color 0.3s, color 0.3s;
         }
 
         body::before {
@@ -81,7 +84,7 @@
             align-items: center;
             width: 100%;
             max-width: 600px;
-            padding: 1.25rem 0 1rem;
+            padding: 1.25rem 0 0.5rem;
             margin: 0 auto;
             gap: 12px;
         }
@@ -110,7 +113,7 @@
             color: var(--text-primary);
             cursor: pointer;
             padding: 0;
-            width: 44px; height: 44px;   /* 44px min tap target */
+            width: 44px; height: 44px;
             border-radius: var(--radius-sm);
             font-size: 1.1rem;
             flex-shrink: 0;
@@ -118,6 +121,52 @@
             transition: background 0.2s;
         }
         #themeToggle:hover { background: var(--border-color); }
+
+        /* ── TABS ───────────────────────────────────────────────────────────── */
+        .nav-tabs {
+            display: flex;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 4px;
+            width: 100%;
+            max-width: 600px;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-radius: var(--radius-md);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            z-index: 1;
+        }
+
+        .tab-btn.active {
+            color: var(--text-primary);
+            background: var(--bg-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .beta-badge {
+            background: #3b82f6;
+            color: white;
+            font-size: 0.65rem;
+            padding: 1px 5px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
 
         /* ── LAYOUT WRAPPER ─────────────────────────────────────────────────── */
         .layout-wrapper {
@@ -138,6 +187,9 @@
             flex: 1;
         }
 
+        .app-mode { display: none; width: 100%; flex-direction: column; }
+        .app-mode.active { display: flex; }
+
         /* ── PLATFORM SELECTOR ──────────────────────────────────────────────── */
         .platform-selector {
             display: flex;
@@ -153,7 +205,7 @@
             justify-content: center;
             gap: 6px;
             padding: 0.65rem 0.5rem;
-            min-height: 48px;         /* Tap target */
+            min-height: 48px;
             background-color: var(--surface-color);
             border: 1px solid var(--border-color);
             color: var(--text-secondary);
@@ -164,16 +216,13 @@
             transition: all 0.18s ease;
             white-space: nowrap;
         }
-        .platform-btn:hover, .platform-btn:active {
-            border-color: #3f3f46;
-            color: var(--text-primary);
-        }
+        .platform-btn:hover { border-color: #3f3f46; color: var(--text-primary); }
         .platform-btn.active {
             border-color: var(--text-primary);
             color: var(--bg-color);
             background-color: var(--text-primary);
         }
-        .platform-btn svg { width: 16px; height: 16px; fill: currentColor; flex-shrink: 0; }
+        .platform-btn svg { width: 16px; height: 16px; fill: currentColor; }
 
         /* ── INPUT ──────────────────────────────────────────────────────────── */
         .input-group { width: 100%; margin-bottom: 1rem; }
@@ -185,7 +234,7 @@
             color: var(--text-primary);
             padding: 0.9rem 1.1rem;
             border-radius: var(--radius-md);
-            font-size: 1rem;          /* Prevents iOS zoom on focus */
+            font-size: 1rem;
             outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
@@ -194,8 +243,6 @@
             border-color: var(--text-primary);
             box-shadow: 0 0 0 3px rgba(255,255,255,0.06);
         }
-        body.light-mode input[type="text"] { background-color: #f8fafc; }
-        body.light-mode input[type="text"]:focus { box-shadow: 0 0 0 3px rgba(15,23,42,0.08); }
 
         /* ── BUTTONS ────────────────────────────────────────────────────────── */
         .btn {
@@ -209,21 +256,21 @@
             cursor: pointer;
             transition: all 0.18s ease;
             display: flex; justify-content: center; align-items: center; gap: 8px;
-            -webkit-tap-highlight-color: transparent;
         }
         .btn-primary { background-color: var(--accent); color: var(--bg-color); }
         .btn-primary:hover  { background-color: var(--accent-hover); }
-        .btn-primary:active { transform: scale(0.98); }
-        .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
-
         .btn-secondary {
             background: transparent;
             border: 1px solid var(--border-color);
             color: var(--text-primary);
             margin-top: 0.75rem;
         }
-        .btn-secondary:hover  { background-color: var(--surface-color); }
-        .btn-secondary:active { transform: scale(0.98); }
+        .btn-capture {
+            background: #22c55e;
+            color: white;
+            margin-top: 1rem;
+        }
+        .btn-capture:hover { background: #16a34a; }
 
         /* ── LOADING ────────────────────────────────────────────────────────── */
         #loadingSection {
@@ -259,6 +306,7 @@
             width: 100%;
             margin: 0.75rem 0;
             display: flex; flex-direction: column;
+            position: relative;
         }
 
         .profile-header {
@@ -286,7 +334,7 @@
             font-size: 0.97rem;
             line-height: 1.75;
             color: var(--text-primary);
-            font-weight: 300;
+            font-weight: 400;
             text-align: left;
             width: 100%;
         }
@@ -306,11 +354,7 @@
             max-height: 280px;
             overflow-y: auto;
             padding-right: 4px;
-            scroll-behavior: smooth;
         }
-        #chatHistory::-webkit-scrollbar { width: 3px; }
-        #chatHistory::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
-
         .chat-bubble {
             padding: 10px 14px;
             border-radius: 14px;
@@ -333,41 +377,35 @@
             border-bottom-left-radius: 4px;
             font-style: italic;
         }
+        .chat-input-wrapper { display: flex; gap: 8px; align-items: center; }
+        .chat-input-wrapper input { flex: 1; padding: 0.75rem 1rem; }
 
-        .chat-input-wrapper {
-            display: flex; gap: 8px; align-items: center;
-        }
-        .chat-input-wrapper input[type="text"] {
-            flex: 1;
-            padding: 0.75rem 1rem;
-            font-size: 0.95rem;
-        }
-        #sendChatBtn {
-            width: auto !important;
-            flex-shrink: 0;
-            padding: 0.75rem 1.1rem !important;
-            min-height: 48px;
-            font-size: 0.9rem;
-        }
-
-        /* ── ERROR CARD ─────────────────────────────────────────────────────── */
-        #errorSection {
-            display: none; flex-direction: column; align-items: center;
-            width: 100%; margin: 1rem 0;
+        /* ── SHARE ──────────────────────────────────────────────────────────── */
+        .verdict-share {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            margin-bottom: 0.25rem;
             animation: slideUp 0.3s ease-out forwards;
         }
-        .error-card {
-            background: rgba(239, 68, 68, 0.07);
-            border: 1px solid rgba(239, 68, 68, 0.28);
-            border-radius: var(--radius-lg);
-            padding: 1.1rem 1.25rem;
-            width: 100%;
-            display: flex; align-items: center; gap: 0.9rem;
+        .share-divider {
+            display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 0.5rem;
         }
-        .error-icon { font-size: 1.5rem; flex-shrink: 0; }
-        .error-text { display: flex; flex-direction: column; gap: 3px; }
-        .error-title  { color: #f87171; font-weight: 600; font-size: 0.95rem; }
-        .error-subtitle { color: var(--text-secondary); font-size: 0.82rem; line-height: 1.4; }
+        .share-divider::before, .share-divider::after {
+            content: ''; flex: 1; height: 1px; background: var(--border-color);
+        }
+        .share-divider span { font-size: 0.72rem; color: var(--text-secondary); font-weight: 500; }
+
+        .share-bar { display: flex; gap: 8px; width: 100%; margin-top: 1rem; }
+        .share-btn {
+            flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 0.6rem 0.5rem; min-height: 44px; border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); background: var(--surface-color);
+            color: var(--text-secondary); font-size: 0.8rem; font-weight: 500; cursor: pointer;
+        }
+        .share-btn svg { width: 15px; height: 15px; fill: currentColor; }
 
         /* ── ADS ────────────────────────────────────────────────────────────── */
         .ads-container {
@@ -378,244 +416,78 @@
             border-radius: var(--radius-md);
             font-size: 0.78rem;
             display: flex; justify-content: center; align-items: center;
-            padding: 8px;
-            overflow: hidden;
+            padding: 8px; margin: 1rem 0;
         }
+        .ad-side { width: 160px; min-height: 600px; display: none; position: sticky; top: 1.5rem; }
 
-        /* Mobile-first: top/bottom ads minimal height */
-        .ad-top    { width: 100%; max-width: 728px; height: 60px; margin: 0.5rem auto 1rem; }
-        .ad-bottom { width: 100%; max-width: 728px; height: 60px; margin: 1rem auto 0.5rem; }
-        .ad-middle { width: 100%; height: 70px; margin: 1rem 0; }
+        @media (min-width: 1024px) { .ad-side { display: flex; } }
 
-        /* Side ads: hidden on mobile */
-        .ad-side {
-            width: 160px; min-height: 600px;
-            display: none; flex-shrink: 0;
-            position: sticky; top: 1.5rem;
-        }
-
-        /* ── ANIMATIONS ─────────────────────────────────────────────────────── */
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(8px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ── SHARE BAR ───────────────────────────────────────────────────────── */
-        .share-label {
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            margin-bottom: 0.5rem;
-            text-align: center;
-        }
-
-        .share-bar {
-            display: flex;
-            gap: 8px;
-            width: 100%;
-            margin-top: 1rem;
-        }
-
-        .share-btn {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 0.6rem 0.5rem;
-            min-height: 44px;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            background: var(--surface-color);
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.18s ease;
-            text-decoration: none;
-            white-space: nowrap;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .share-btn:hover, .share-btn:active {
-            color: var(--text-primary);
-            border-color: var(--text-secondary);
-        }
-        .share-btn svg { width: 15px; height: 15px; fill: currentColor; flex-shrink: 0; }
-
-        /* Color variants */
-        .share-btn.whatsapp:hover  { border-color: #25D366; color: #25D366; }
-        .share-btn.twitter:hover   { border-color: #e7e7e7; color: #e7e7e7; }
-        .share-btn.copy:hover      { border-color: var(--text-primary); color: var(--text-primary); }
-        .share-btn.native:hover    { border-color: #a78bfa; color: #a78bfa; }
-
-        /* Verdict share section (below roast card) */
-        .verdict-share {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-            width: 100%;
-            margin-bottom: 0.25rem;
-            animation: slideUp 0.3s ease-out forwards;
-        }
-
-        /* Divider with label */
-        .share-divider {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            width: 100%;
-            margin-top: 0.5rem;
-        }
-        .share-divider::before, .share-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border-color);
-        }
-        .share-divider span {
-            font-size: 0.72rem;
-            color: var(--text-secondary);
-            font-weight: 500;
-            white-space: nowrap;
-        }
-
-        /* Toast notification */
         #toast {
-            position: fixed;
-            bottom: calc(1.5rem + env(safe-area-inset-bottom));
-            left: 50%;
-            transform: translateX(-50%) translateY(20px);
-            background: var(--text-primary);
-            color: var(--bg-color);
-            padding: 0.6rem 1.2rem;
-            border-radius: 999px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            opacity: 0;
-            transition: opacity 0.2s, transform 0.2s;
-            pointer-events: none;
-            z-index: 9999;
-            white-space: nowrap;
+            position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: var(--text-primary); color: var(--bg-color); padding: 0.6rem 1.2rem;
+            border-radius: 999px; font-size: 0.85rem; font-weight: 500; opacity: 0;
+            transition: opacity 0.2s, transform 0.2s; z-index: 9999;
         }
-        #toast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-        /* ── RESPONSIVE: TABLET+ ────────────────────────────────────────────── */
-        @media (min-width: 600px) {
-            body { padding: 0 1.5rem 2.5rem; }
-            h1   { font-size: 2rem; }
-            header { text-align: center; }
-            .header-container { padding: 1.5rem 0 1.25rem; }
-            .roast-card { padding: 2rem; }
-            .ad-top, .ad-bottom { height: 90px; }
-            .ad-middle { height: 90px; }
-            .platform-btn { font-size: 0.93rem; gap: 8px; }
-        }
-
-        /* ── RESPONSIVE: DESKTOP ────────────────────────────────────────────── */
-        @media (min-width: 1024px) {
-            .ad-side { display: flex; }
-            body { padding: 0 2rem 3rem; }
-        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     </style>
-
 </head>
 <body>
 
-    <!-- Header con Botón de Tema -->
     <div class="header-container">
         <header>
-            <h1>Análisis de Perfil</h1>
-            <p>Una auditoría y Chatbot impulsado por Inteligencia Artificial.</p>
+            <h1>Auditoría IA</h1>
+            <p>Veredictos brutales impulsados por Inteligencia Artificial.</p>
         </header>
         <button id="themeToggle" title="Cambiar Tema">☀️</button>
     </div>
 
-    <!-- Ad 1: Top -->
-    <div id="adsense-top" class="ads-container ad-top">
-        [ AdSense - Top Leaderboard (728x90) ]
-        <!-- Script -->
+    <!-- TABS -->
+    <div class="nav-tabs">
+        <button class="tab-btn active" data-mode="personal">⚡ Perfiles</button>
+        <button class="tab-btn" data-mode="business">🏢 Empresas <span class="beta-badge">BETA</span></button>
     </div>
 
-    <!-- MAIN GRID WRAPPER FOR SIDE ADS -->
     <div class="layout-wrapper">
         
-        <!-- Ad 2: Left Side -->
-        <div id="adsense-left" class="ads-container ad-side">
-            [ AdSense - Skyscraper Left ]
-            <!-- Script -->
-        </div>
+        <div class="ads-container ad-side" id="ad-left"> [ AdSense Side ] </div>
 
         <main>
-            <div class="platform-selector">
-                <button class="platform-btn active" data-platform="tiktok">
-                    <svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
-                    TikTok
-                </button>
-                <button class="platform-btn" data-platform="instagram">
-                    <svg viewBox="0 0 24 24"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.22.41.56.22.96.48 1.36.88.4.4.66.8.88 1.36.16.42.36 1.05.41 2.22.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.22-.22.56-.48.96-.88 1.36-.4.4-.8.66-1.36.88-.42.16-1.05.36-2.22.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.22-.41-.56-.22-.96-.48-1.36-.88-.4-.4-.66-.8-.88-1.36-.16-.42-.36-1.05-.41-2.22C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.22.22-.56.48-.96.88-1.36.4-.4.8-.66 1.36-.88.42-.16 1.05-.36 2.22-.41C8.42 2.17 8.8 2.16 12 2.16m0-2.16C8.75 0 8.35.01 7.07.07c-1.3.06-2.19.27-2.96.57-.8.31-1.48.74-2.16 1.41-.68.68-1.1 1.36-1.41 2.16-.3.77-.51 1.66-.57 2.96C0 8.35 0 8.75 0 12s.01 3.65.07 4.93c.06 1.3.27 2.19.57 2.96.31.8.74 1.48 1.41 2.16.68.68 1.36 1.1 2.16 1.41.77.3 1.66.51 2.96.57C8.35 24 8.75 24 12 24s3.65-.01 4.93-.07c1.3-.06 2.19-.27 2.96-.57.8-.31 1.48-.74 2.16-1.41.68-.68 1.1-1.36 1.41-2.16.3-.77.51-1.66.57-2.96.06-1.28.07-1.68.07-4.93s-.01-3.65-.07-4.93c-.06-1.3-.27-2.19-.57-2.96-.31-.8-.74-1.48-1.41-2.16-.68-.68-1.36-1.1-2.16-1.41-.77-.3-1.66-.51-2.96-.57C15.65.01 15.25 0 12 0zm0 5.83a6.17 6.17 0 1 0 0 12.34 6.17 6.17 0 0 0 0-12.34zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm5.88-10.42a1.44 1.44 0 1 1-2.88 0 1.44 1.44 0 0 1 2.88 0z"/></svg>
-                    Instagram
-                </button>
-                <button class="platform-btn" data-platform="youtube">
-                    <svg viewBox="0 0 24 24"><path d="M23.49 6.2c-.23-.88-.93-1.57-1.81-1.81C20.08 4 12 4 12 4s-8.08 0-9.68.39c-.88.24-1.58.93-1.81 1.81C.12 7.8.12 12 .12 12s0 4.2.39 5.8c.23.88.93 1.57 1.81 1.81 1.6.39 9.68.39 9.68.39s8.08 0 9.68-.39c.88-.24 1.58-.93 1.81-1.81.39-1.6.39-5.8.39-5.8s0-4.2-.39-5.8zM9.6 15.6V8.4l6.4 3.6-6.4 3.6z"/></svg>
-                    YouTube
-                </button>
-            </div>
-
-            <div class="input-group">
-                <input type="text" id="username" placeholder="Ingresa tu usuario (ej: @usuario)" autocomplete="off">
-            </div>
-            
-            <button id="analyzeBtn" class="btn btn-primary">Comenzar Auditoría</button>
-
-            <!-- Compartir la app (siempre visible) -->
-            <div id="appShareSection">
-                <div class="share-divider" style="margin-top: 1.25rem;"><span>🔥 Comparte la app</span></div>
-                <div class="share-bar">
-                    <button class="share-btn whatsapp" onclick="shareVia('whatsapp')" title="WhatsApp">
-                        <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                        WhatsApp
+            <!-- MODO PERSONAL -->
+            <section id="modePersonal" class="app-mode active">
+                <div class="platform-selector">
+                    <button class="platform-btn active" data-platform="tiktok">
+                        <svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>TikTok
                     </button>
-                    <button class="share-btn twitter" onclick="shareVia('twitter')" title="X / Twitter">
-                        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                        X / Twitter
+                    <button class="platform-btn" data-platform="instagram">
+                        <svg viewBox="0 0 24 24"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.22.41.56.22.96.48 1.36.88.4.4.66.8.88 1.36.16.42.36 1.05.41 2.22.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.22-.22.56-.48.96-.88 1.36-.4.4-.8.66-1.36.88-.42.16-1.05.36-2.22.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.22-.41-.56-.22-.96-.48-1.36-.88-.4-.4-.66-.8-.88-1.36-.16-.42-.36-1.05-.41-2.22C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.22.22-.56.48-.96.88-1.36.4-.4.8-.66 1.36-.88.42-.16 1.05-.36 2.22-.41C8.42 2.17 8.8 2.16 12 2.16m0-2.16C8.75 0 8.35.01 7.07.07c-1.3.06-2.19.27-2.96.57-.8.31-1.48.74-2.16 1.41-.68.68-1.1 1.36-1.41 2.16-.3.77-.51 1.66-.57 2.96C0 8.35 0 8.75 0 12s.01 3.65.07 4.93c.06 1.3.27 2.19.57 2.96.31.8.74 1.48 1.41 2.16.68.68 1.36 1.1 2.16 1.41.77.3 1.66.51 2.96.57C8.35 24 8.75 24 12 24s3.65-.01 4.93-.07c1.3-.06 2.19-.27 2.96-.57.8-.31 1.48-.74 2.16-1.41.68-.68 1.1-1.36 1.41-2.16.3-.77.51-1.66.57-2.96.06-1.28.07-1.68.07-4.93s-.01-3.65-.07-4.93c-.06-1.3-.27-2.19-.57-2.96-.31-.8-.74-1.48-1.41-2.16-.68-.68-1.36-1.1-2.16-1.41-.77-.3-1.66-.51-2.96-.57C15.65.01 15.25 0 12 0zm0 5.83a6.17 6.17 0 1 0 0 12.34 6.17 6.17 0 0 0 0-12.34zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm5.88-10.42a1.44 1.44 0 1 1-2.88 0 1.44 1.44 0 0 1 2.88 0z"/></svg>Instagram
                     </button>
-                    <button class="share-btn copy" onclick="shareVia('copy')" title="Copiar enlace" id="copyAppBtn">
-                        <svg viewBox="0 0 24 24"><path d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
-                        Copiar
+                    <button class="platform-btn" data-platform="youtube">
+                        <svg viewBox="0 0 24 24"><path d="M23.49 6.2c-.23-.88-.93-1.57-1.81-1.81C20.08 4 12 4 12 4s-8.08 0-9.68.39c-.88.24-1.58.93-1.81 1.81C.12 7.8.12 12 .12 12s0 4.2.39 5.8c.23.88.93 1.57 1.81 1.81 1.6.39 9.68.39 9.68.39s8.08 0 9.68-.39c.88-.24 1.58-.93 1.81-1.81.39-1.6.39-5.8.39-5.8s0-4.2-.39-5.8zM9.6 15.6V8.4l6.4 3.6-6.4 3.6z"/></svg>YouTube
                     </button>
                 </div>
-            </div>
+                <div class="input-group">
+                    <input type="text" id="username" placeholder="Ingresa tu usuario (ej: @usuario)" autocomplete="off">
+                </div>
+                <button id="analyzeBtn" class="btn btn-primary">Comenzar Auditoría</button>
+            </section>
 
-            <!-- Ad 3: Middle In-Article -->
-            <div id="adsense-middle" class="ads-container ad-middle" style="display: none;">
-                [ AdSense - In Article ]
-                <!-- Script -->
-            </div>
+            <!-- MODO EMPRESA -->
+            <section id="modeBusiness" class="app-mode">
+                <div class="input-group">
+                    <input type="text" id="bizUrl" placeholder="URL de la empresa (ej: miempresa.com)" autocomplete="off">
+                </div>
+                <button id="analyzeBizBtn" class="btn btn-primary">Auditar Empresa</button>
+            </section>
 
             <div id="loadingSection">
                 <span class="loader"></span>
-                <p id="loadingText">Extrayendo datos de la cuenta...</p>
-            </div>
-
-            <!-- Error: Cuenta no encontrada -->
-            <div id="errorSection">
-                <div class="error-card">
-                    <span class="error-icon">🔍</span>
-                    <div class="error-text">
-                        <span class="error-title">Cuenta no encontrada</span>
-                        <span class="error-subtitle" id="errorMessage">Por favor, revisa el nombre de usuario e inténtalo de nuevo.</span>
-                    </div>
-                </div>
+                <p id="loadingText">Extrayendo datos...</p>
             </div>
 
             <div id="resultSection">
-                <div class="roast-card">
+                <div class="roast-card" id="roastCard">
                     <div class="profile-header">
                         <img id="profileImage" src="" alt="Avatar" onerror="this.style.display='none'">
                         <div class="profile-meta">
@@ -623,98 +495,84 @@
                             <span id="roastPlatform"></span>
                         </div>
                     </div>
-                    
                     <div id="roastContent"></div>
-                    
-                    <!-- NEW CHAT SYSTEM -->
-                    <div id="chatInterface">
-                        <div id="chatHistory"></div>
-                        <div class="chat-input-wrapper">
-                            <input type="text" id="chatInput" placeholder="Respóndele al Juez..." autocomplete="off">
-                            <button id="sendChatBtn" class="btn btn-primary" style="width: auto; padding: 0 1.5rem;">Enviar</button>
-                        </div>
-                    </div>
-
                 </div>
 
-                <!-- Compartir VEREDICTO (solo aparece tras el análisis) -->
+                <button id="captureBtn" class="btn btn-capture">📸 Guardar como Imagen</button>
+                
+                <div id="chatInterface">
+                    <div id="chatHistory"></div>
+                    <div class="chat-input-wrapper">
+                        <input type="text" id="chatInput" placeholder="Respóndele al Juez..." autocomplete="off">
+                        <button id="sendChatBtn" class="btn btn-primary" style="width: auto; padding: 0 1.2rem;">Enviar</button>
+                    </div>
+                </div>
+
                 <div class="verdict-share" id="verdictShare">
                     <div class="share-divider"><span>⚖️ Comparte el veredicto</span></div>
                     <div class="share-bar">
-                        <button class="share-btn native" id="nativeShareBtn" onclick="shareVerdict('native')" style="display:none">
-                            <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
-                            Compartir
-                        </button>
-                        <button class="share-btn whatsapp" onclick="shareVerdict('whatsapp')">
-                            <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                            WhatsApp
-                        </button>
-                        <button class="share-btn twitter" onclick="shareVerdict('twitter')">
-                            <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                            X
-                        </button>
-                        <button class="share-btn copy" onclick="shareVerdict('copy')">
-                            <svg viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-                            Copiar
-                        </button>
+                        <button class="share-btn whatsapp" onclick="shareVerdict('whatsapp')">WhatsApp</button>
+                        <button class="share-btn twitter" onclick="shareVerdict('twitter')">X</button>
+                        <button class="share-btn copy" onclick="shareVerdict('copy')">Copiar</button>
                     </div>
                 </div>
 
-                <button id="shareBtn" class="btn btn-secondary">Auditar a alguien más</button>
+                <button id="resetBtn" class="btn btn-secondary">Auditar a alguien más</button>
             </div>
         </main>
-        
-        <!-- Ad 4: Right Side -->
-        <div id="adsense-right" class="ads-container ad-side">
-            [ AdSense - Skyscraper Right ]
-            <!-- Script -->
-        </div>
 
+        <div class="ads-container ad-side" id="ad-right"> [ AdSense Side ] </div>
     </div>
 
-    <!-- Ad 5 / Optional Footer: Bottom -->
-    <div id="adsense-bottom" class="ads-container ad-bottom">
-        [ AdSense - Footer ]
-        <!-- Script -->
-    </div>
-
-    <!-- Toast notification -->
     <div id="toast"></div>
 
     <script>
-        const analyzeBtn = document.getElementById('analyzeBtn');
-        const shareBtn = document.getElementById('shareBtn');
+        // --- SELECTORES ---
+        const themeToggle = document.getElementById('themeToggle');
+        const tabs = document.querySelectorAll('.tab-btn');
+        const modes = document.querySelectorAll('.app-mode');
+        const platformBtns = document.querySelectorAll('.platform-btn');
         const usernameInput = document.getElementById('username');
+        const bizUrlInput = document.getElementById('bizUrl');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const analyzeBizBtn = document.getElementById('analyzeBizBtn');
         const loadingSection = document.getElementById('loadingSection');
-        const resultSection = document.getElementById('resultSection');
-        const errorSection = document.getElementById('errorSection');
-        const errorMessage = document.getElementById('errorMessage');
         const loadingText = document.getElementById('loadingText');
+        const resultSection = document.getElementById('resultSection');
+        const roastCard = document.getElementById('roastCard');
         const roastContent = document.getElementById('roastContent');
         const roastUser = document.getElementById('roastUser');
         const roastPlatform = document.getElementById('roastPlatform');
         const profileImage = document.getElementById('profileImage');
-        const platformBtns = document.querySelectorAll('.platform-btn');
-        const adsenseMiddle = document.getElementById('adsense-middle');
-        const themeToggle = document.getElementById('themeToggle');
-        
-        // Elementos del Chat
+        const captureBtn = document.getElementById('captureBtn');
         const chatInterface = document.getElementById('chatInterface');
         const chatHistory = document.getElementById('chatHistory');
         const chatInput = document.getElementById('chatInput');
         const sendChatBtn = document.getElementById('sendChatBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const verdictShare = document.getElementById('verdictShare');
 
+        let currentMode = 'personal';
         let currentPlatform = 'tiktok';
-        let currentMessages = []; // Memoria del chat inteligente
+        let currentMessages = [];
+        let typeWriterInterval;
 
-        // Funcionalidad Dark/Light Mode
+        // --- THEME ---
         themeToggle.addEventListener('click', () => {
             document.body.classList.toggle('light-mode');
-            if (document.body.classList.contains('light-mode')) {
-                themeToggle.textContent = '🌙';
-            } else {
-                themeToggle.textContent = '☀️';
-            }
+            themeToggle.textContent = document.body.classList.contains('light-mode') ? '🌙' : '☀️';
+        });
+
+        // --- TABS ---
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentMode = tab.dataset.mode;
+                modes.forEach(m => m.classList.remove('active'));
+                document.getElementById(`mode${currentMode.charAt(0).toUpperCase() + currentMode.slice(1)}`).classList.add('active');
+                resetUI();
+            });
         });
 
         platformBtns.forEach(btn => {
@@ -726,257 +584,162 @@
             });
         });
 
-        const loadingMessages = [
-            "Conectando a bases confidenciales...",
-            "Saltando restricciones de seguridad...",
-            "Descargando historial...",
-            "Buscando defectos en el canal..."
-        ];
+        // --- LÓGICA DE ANÁLISIS ---
+        const loadingMessages = ["Iniciando protocolos...", "Analizando debilidades...", "Extrayendo secretos...", "Preparando veredicto..."];
 
-        let typeWriterInterval;
-        let loadingInterval;
+        function startLoading() {
+            loadingSection.style.display = 'flex';
+            let i = 0;
+            const interval = setInterval(() => {
+                loadingText.textContent = loadingMessages[i];
+                i = (i + 1) % loadingMessages.length;
+            }, 1000);
+            return interval;
+        }
 
-        function typeWriterEffect(text, element, speed = 15) {
+        function typeWriter(text, element) {
             element.innerHTML = '';
             let i = 0;
-            
-            analyzeBtn.style.display = 'none';
-            shareBtn.style.display = 'none';
-            adsenseMiddle.style.display = 'none';
-            chatInterface.style.display = 'none';
-            resultSection.style.display = 'flex';
-            
+            clearInterval(typeWriterInterval);
             typeWriterInterval = setInterval(() => {
                 if (i < text.length) {
-                    if(text.charAt(i) === '\n') {
-                        element.innerHTML += '<br>';
-                    } else {
-                        element.innerHTML += text.charAt(i);
-                    }
+                    element.innerHTML += text.charAt(i) === '\n' ? '<br>' : text.charAt(i);
                     i++;
                 } else {
                     clearInterval(typeWriterInterval);
-                    shareBtn.style.display = 'block';
-                    adsenseMiddle.style.display = 'flex';
-                    chatInterface.style.display = 'flex'; // Mostrar chat
+                    chatInterface.style.display = 'flex';
+                    verdictShare.style.display = 'flex';
+                    captureBtn.style.display = 'flex';
                 }
-            }, speed);
+            }, 10);
         }
 
-        analyzeBtn.addEventListener('click', async () => {
-            const user = usernameInput.value.trim();
-            
-            if(!user) {
-                usernameInput.focus();
-                return;
-            }
-
-            // Cleanup ui 
-            analyzeBtn.style.display = 'none';
-            resultSection.style.display = 'none';
-            errorSection.style.display = 'none';
-            shareBtn.style.display = 'none';
-            if(typeWriterInterval) clearInterval(typeWriterInterval);
-            roastContent.innerHTML = '';
-            chatHistory.innerHTML = ''; // resetear chat visual
-            currentMessages = []; // resetear chat lógico
-            profileImage.style.display = 'none';
-            
-            loadingSection.style.display = 'flex';
-            let msgIndex = 0;
-            loadingText.textContent = loadingMessages[0];
-            loadingInterval = setInterval(() => {
-                msgIndex = (msgIndex + 1) % loadingMessages.length;
-                loadingText.textContent = loadingMessages[msgIndex];
-            }, 1200);
-
+        async function perfomAnalysis(endpoint, body) {
+            resetUI();
+            const loadingInterval = startLoading();
             try {
-                const response = await fetch('/api/analyze', {
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: user, platform: currentPlatform })
+                    body: JSON.stringify(body)
                 });
-
-                clearInterval(loadingInterval);
                 const data = await response.json();
-                
-                if (!response.ok || data.error) {
-                    // Mostrar error visual elegante
-                    loadingSection.style.display = 'none';
-                    errorMessage.textContent = data.error || 'Ocurrió un error inesperado. Inténtalo de nuevo.';
-                    errorSection.style.display = 'flex';
-                    analyzeBtn.style.display = 'block';
-                    return;
-                }
-
-                // Guardar la inicialización en memoria
-                currentMessages = data.messages;
-
-                finishAnalysis(user, data.imageUrl, data.roast);
-
-            } catch (error) {
                 clearInterval(loadingInterval);
                 loadingSection.style.display = 'none';
-                analyzeBtn.style.display = 'block';
-                alert("Error de conexión. Asegúrate de que el servidor esté corriendo.");
+
+                if (!response.ok) throw new Error(data.error || "Fallo en la IA");
+
+                currentMessages = data.messages;
+                resultSection.style.display = 'flex';
+
+                if (currentMode === 'personal') {
+                    roastUser.textContent = body.username.startsWith('@') ? body.username : '@' + body.username;
+                    roastPlatform.textContent = `Auditoría IA de ${currentPlatform.charAt(0).toUpperCase() + currentPlatform.slice(1)}`;
+                    if (data.imageUrl) { profileImage.src = data.imageUrl; profileImage.style.display = 'block'; }
+                    typeWriter(data.roast, roastContent);
+                } else {
+                    roastUser.textContent = data.name;
+                    roastPlatform.textContent = `Auditoría Brutal de Empresa`;
+                    if (data.favicon) { profileImage.src = data.favicon; profileImage.style.display = 'block'; }
+                    typeWriter(data.audit, roastContent);
+                }
+            } catch (err) {
+                clearInterval(loadingInterval);
+                loadingSection.style.display = 'none';
+                alert(err.message);
             }
+        }
+
+        analyzeBtn.addEventListener('click', () => {
+            const user = usernameInput.value.trim();
+            if (!user) return;
+            perfomAnalysis('/api/analyze', { username: user, platform: currentPlatform });
         });
 
-        function finishAnalysis(user, imageUrl, roastText) {
-            loadingSection.style.display = 'none';
+        analyzeBizBtn.addEventListener('click', () => {
+            const url = bizUrlInput.value.trim();
+            if (!url) return;
+            perfomAnalysis('/api/analyze-biz', { url });
+        });
 
-            const displayUser = user.startsWith('@') ? user : '@' + user;
-            roastUser.textContent = displayUser;
-            roastPlatform.textContent = `Auditoría IA de ${currentPlatform.charAt(0).toUpperCase() + currentPlatform.slice(1)}`;
-
-            // Guardar para compartir
-            lastRoastText = roastText;
-            lastRoastUser = displayUser;
-
-            if (imageUrl && imageUrl !== 'null') {
-                profileImage.src = imageUrl;
-                profileImage.style.display = 'block';
-            } else {
-                profileImage.style.display = 'none';
-            }
-
-            typeWriterEffect(roastText, roastContent);
-
-            // Mostrar compartir veredicto, ocultar compartir app mientras se ven resultados
-            document.getElementById('appShareSection').style.display = 'none';
-            document.getElementById('verdictShare').style.display = 'flex';
-
-            usernameInput.value = '';
-            usernameInput.blur();
-        }
-
-        // --- SISTEMA DE CHAT EN VIVO ---
-        
-        function addChatBubble(text, sender) {
-            const bubble = document.createElement('div');
-            bubble.className = `chat-bubble bubble-${sender}`;
-            // replace newlines with br
-            bubble.innerHTML = text.replace(/\n/g, '<br>');
-            chatHistory.appendChild(bubble);
-            chatHistory.scrollTop = chatHistory.scrollHeight; // auto scroll
-        }
-
+        // --- CHAT ---
         sendChatBtn.addEventListener('click', async () => {
             const txt = chatInput.value.trim();
             if(!txt) return;
 
-            // 1. Añadir el mensaje del usuario visualmente
-            addChatBubble(txt, 'user');
+            addBubble(txt, 'user');
             chatInput.value = '';
-            chatInput.disabled = true;
-            sendChatBtn.disabled = true;
-
-            // 2. Guardarlo en el array
             currentMessages.push({ role: 'user', content: txt });
 
             try {
-                // 3. Petición POST al backend
-                const response = await fetch('/api/chat', {
+                const endpoint = currentMode === 'personal' ? '/api/chat' : '/api/chat-biz';
+                const res = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ messages: currentMessages })
                 });
-
-                const data = await response.json();
-                
-                if (data.error) {
-                    alert(data.error);
-                } else {
-                    // 4. Mostrar respuesta IA visualmente y guardarla
-                    addChatBubble(data.reply, 'ai');
-                    currentMessages.push({ role: 'assistant', content: data.reply });
-                }
-            } catch(e) {
-                alert("Hubo un error contactando a la IA.");
-            }
-
-            chatInput.disabled = false;
-            sendChatBtn.disabled = false;
-            chatInput.focus();
+                const data = await res.json();
+                addBubble(data.reply, 'ai');
+                currentMessages.push({ role: 'assistant', content: data.reply });
+            } catch (e) { alert("Error en el chat"); }
         });
 
-        // Permitir Enter para enviar mensaje
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendChatBtn.click();
-        });
-
-
-        shareBtn.addEventListener('click', () => {
-            resultSection.style.display = 'none';
-            adsenseMiddle.style.display = 'none';
-            analyzeBtn.style.display = 'block';
-            // Restaurar compartir app y ocultar veredicto
-            document.getElementById('appShareSection').style.display = 'block';
-            document.getElementById('verdictShare').style.display = 'none';
-        });
-        // ── SHARE FUNCTIONS ────────────────────────────────────────────────
-        const appUrl   = window.location.href;
-        const appTitle = 'Juez de Perfiles IA — Auditoría de Instagram, TikTok y YouTube';
-        const appText  = '🔥 ¡Esta IA juzga perfiles de redes sociales con todo el sarcasmo del mundo! Pon a prueba el tuyo 👀';
-        let lastRoastText = '';
-        let lastRoastUser = '';
-        const verdictShare  = document.getElementById('verdictShare');
-        const nativeShareBtn = document.getElementById('nativeShareBtn');
-
-        // Detectar si el browser soporta Web Share API (móvil)
-        if (navigator.share) {
-            nativeShareBtn.style.display = 'flex';
+        function addBubble(text, sender) {
+            const b = document.createElement('div');
+            b.className = `chat-bubble bubble-${sender}`;
+            b.innerHTML = text.replace(/\n/g, '<br>');
+            chatHistory.appendChild(b);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
         }
 
-        // Mostrar toast breve
+        // --- CAPTURE ---
+        captureBtn.addEventListener('click', () => {
+            // Ajustar temporalmente el card para la captura
+            const originalBorder = roastCard.style.border;
+            roastCard.style.border = 'none';
+            
+            html2canvas(roastCard, {
+                backgroundColor: getComputedStyle(document.body).getPropertyValue('--surface-color'),
+                scale: 2
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Veredicto_IA_${Date.now()}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+                showToast('✅ Imagen descargada');
+                roastCard.style.border = originalBorder;
+            });
+        });
+
+        // --- UTILS ---
+        function resetUI() {
+            resultSection.style.display = 'none';
+            loadingSection.style.display = 'none';
+            chatHistory.innerHTML = '';
+            roastContent.innerHTML = '';
+            profileImage.style.display = 'none';
+            chatInterface.style.display = 'none';
+            verdictShare.style.display = 'none';
+        }
+
+        resetBtn.addEventListener('click', resetUI);
+
         function showToast(msg) {
             const t = document.getElementById('toast');
-            t.textContent = msg;
-            t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 2500);
+            t.textContent = msg; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2000);
         }
 
-        // ── Compartir la APP (siempre visible) ──
-        function shareVia(method) {
-            const text = appText;
-            const url  = appUrl;
-
-            if (method === 'whatsapp') {
-                window.open(`https://wa.me/?text=${encodeURIComponent(text + '\n' + url)}`, '_blank');
-            } else if (method === 'twitter') {
-                window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
-            } else if (method === 'copy') {
-                navigator.clipboard.writeText(url)
-                    .then(() => showToast('✅ ¡Enlace copiado!'))
-                    .catch(() => showToast('❌ No se pudo copiar'));
-            }
-        }
-
-        // ── Compartir el VEREDICTO (tras análisis) ──
         function shareVerdict(method) {
-            const user   = lastRoastUser || 'este perfil';
-            const roast  = lastRoastText ? lastRoastText.slice(0, 200) + '...' : '';
-            const text   = `⚖️ El Juez IA analió a ${user}:\n\n“${roast}”\n\nJuzga el tuyo también:`;
-            const url    = appUrl;
-
-            if (method === 'native' && navigator.share) {
-                navigator.share({ title: appTitle, text: text, url: url })
-                    .catch(() => {});
-            } else if (method === 'whatsapp') {
-                window.open(`https://wa.me/?text=${encodeURIComponent(text + '\n' + url)}`, '_blank');
-            } else if (method === 'twitter') {
-                const tweetText = `⚖️ ${user} fue juzgado por la IA 🔥 Juzga el tuyo:`;
-                window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(url)}`, '_blank');
-            } else if (method === 'copy') {
-                const full = `${text}\n${url}`;
-                navigator.clipboard.writeText(full)
-                    .then(() => showToast('✅ ¡Veredicto copiado!'))
-                    .catch(() => showToast('❌ No se pudo copiar'));
+            const text = "🔥 ¡El Juez IA me ha destrozado! Mira tu veredicto aquí:";
+            const url = window.location.href;
+            if (method === 'whatsapp') window.open(`https://wa.me/?text=${encodeURIComponent(text + " " + url)}`);
+            else if (method === 'twitter') window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`);
+            else {
+                navigator.clipboard.writeText(text + " " + url);
+                showToast('✅ Copiado al portapapeles');
             }
         }
-
-        // Exponer lastRoastText para que finishAnalysis lo llene
-        const _origFinishAnalysis = finishAnalysis;
     </script>
 </body>
 </html>
